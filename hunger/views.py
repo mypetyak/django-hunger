@@ -1,5 +1,6 @@
 from django.core.urlresolvers import reverse_lazy
 from django.shortcuts import redirect
+from hunger.email import beta_invite
 from hunger.models import InvitationCode
 from hunger.forms import InviteSendForm
 from hunger.utils import setting, now
@@ -22,6 +23,9 @@ class InviteView(FormView):
         form.instance.code = valid_code
         form.instance.invited = now()
         form.save()
+
+        # Send invitation email to user
+        beta_invite(form.instance.email, valid_code, self.request)
 
         return super(InviteView, self).form_valid(form)
 
