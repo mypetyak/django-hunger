@@ -147,11 +147,15 @@ class BetaMiddleware(object):
         if code.private:
             # If we got here, we're trying to fix up a previous private
             # invitation to the correct user/email.
-            invitation = Invitation.objects.filter(code=code)[0]
+            invitation = Invitation.objects.filter(code=code, num_invites__gt=0)[0]
             invitation.user = request.user
             invitation.invited = right_now
             invitation.used = right_now
-            code.num_invites = 0
+            code.num_invites -= 1
+            
+            # Now remove cookie so that a second signup (for different user)
+            # will not try to use the expired code
+            request._hunger_delete_cookie = True
         else:
             invitation = Invitation(user=request.user,
                                     code=code,
