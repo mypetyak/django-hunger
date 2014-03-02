@@ -86,6 +86,9 @@ class BetaMiddleware(object):
             return redirect(self.redirect)
 
         if request.user.is_staff:
+            # In case this session variable is used in view conditions,
+            # treat staff members just like in-beta users
+            request.session['hunger_in_beta'] = True
             return
 
         # Prevent queries by caching in_beta status in session
