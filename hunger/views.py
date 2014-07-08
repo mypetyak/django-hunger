@@ -5,6 +5,7 @@ from hunger.utils import setting, now
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import FormView
 from django.contrib.auth.decorators import login_required
+from hunger.email import beta_invite
 
 
 class InviteView(FormView):
@@ -21,6 +22,9 @@ class InviteView(FormView):
         form.instance.code = valid_code
         form.instance.invited = now()
         form.save()
+
+        # Send invitation email to user
+        beta_invite(form.instance.email, self.request, valid_code)
 
         return super(InviteView, self).form_valid(form)
 
