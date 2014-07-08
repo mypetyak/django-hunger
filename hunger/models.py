@@ -1,10 +1,19 @@
-import string, random
+from __future__ import unicode_literals
+import importlib
+import random
+import string
 from django.db import models
+from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 from hunger.utils import setting
-from hunger.signals import invite_sent
 
-User = setting('AUTH_USER_MODEL')
+try:
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+except RuntimeError:
+    User = settings.AUTH_USER_MODEL
+except ImportError:
+    from django.contrib.auth.models import User
 
 
 class Invitation(models.Model):
@@ -19,12 +28,26 @@ class Invitation(models.Model):
         send_email = kwargs.pop('send_email', False)
         request = kwargs.pop('request', None)
         if send_email and self.invited and not self.used:
-            invite_sent.send(sender=self.__class__, invitation=self,
-                             request=request, user=self.user)
+            send_invitation(self, request=request, user=self.user)
+
         super(Invitation, self).save(*args, **kwargs)
 
     class Meta:
         unique_together = (('user', 'code'),)
+
+
+def send_invitation(invitation, **kwargs):
+    """Send invitation code to user.
+
+    Invitation could be InvitationCode or Invitation.
+    """
+    email = invitation.user.email if invitation.user else invitation.email
+    code = invitation.code.code if invitation.code else None
+    bits = setting('HUNGER_EMAIL_INVITE_FUNCTION').rsplit('.', 1)
+    module_name, func_name = bits
+    module = importlib.import_module(module_name)
+    func = getattr(module, func_name)
+    func(email, code=code, **kwargs)
 
 
 class InvitationCode(models.Model):
@@ -34,10 +57,10 @@ class InvitationCode(models.Model):
         _('Max number of invitations'), default=1)
     num_invites = models.PositiveIntegerField(
         _('Remaining invitations'), default=1)
-    invited_users = models.ManyToManyField(User,
-        related_name='invitations', through='Invitation')
+    invited_users = models.ManyToManyField(
+        User, related_name='invitations', through='Invitation')
     owner = models.ForeignKey(User, related_name='created_invitations',
-        blank=True, null=True)
+                              blank=True, null=True)
 
     def __unicode__(self):
         return self.code
@@ -48,7 +71,7 @@ class InvitationCode(models.Model):
 
     @classmethod
     def generate_invite_code(self):
-        return ''.join(random.choice(string.letters) for i in range(16))
+        return ''.join(random.choice(string.ascii_letters) for i in range(16))
 
     def save(self, *args, **kwargs):
         if not self.code:

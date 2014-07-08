@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+from django.utils import six
 from django.conf import settings
 from django.core.urlresolvers import reverse, resolve
 from django.shortcuts import redirect
@@ -83,8 +85,7 @@ class BetaMiddleware(object):
             return
 
         if not request.user.is_authenticated():
-            # Rather than tell the anonymous user they aren't in beta,
-            # ask them to log in first
+            # Ask anonymous user to log in if trying to access in-beta view
             return redirect(settings.LOGIN_URL)
 
         if request.user.is_staff:
@@ -133,7 +134,6 @@ class BetaMiddleware(object):
             request.session['hunger_in_beta'] = True
             return
 
-
         if not cookie_code:
             if not invitations:
                 invitation = Invitation(user=request.user)
@@ -143,7 +143,7 @@ class BetaMiddleware(object):
         # No invitation, all we have is this cookie code
         try:
             code = InvitationCode.objects.get(code=cookie_code,
-                num_invites__gt=0)
+                                              num_invites__gt=0)
         except InvitationCode.DoesNotExist:
             request._hunger_delete_cookie = True
             return redirect(reverse('hunger-invalid', args=(cookie_code,)))
@@ -173,7 +173,11 @@ class BetaMiddleware(object):
 
     def process_response(self, request, response):
         if getattr(request, '_hunger_delete_cookie', False):
-            response.delete_cookie('hunger_code')
+            if six.PY2:
+                code = u'hunger_code'.encode('utf-8')
+            elif six.PY3:
+                code = 'hunger_code'
+            response.delete_cookie(code)
         return response
 
     @staticmethod

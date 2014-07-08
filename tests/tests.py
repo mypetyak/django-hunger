@@ -1,7 +1,7 @@
+from __future__ import unicode_literals
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
 from django.test import TestCase
-from hunger import forms
 from hunger.utils import setting, now
 from hunger.models import Invitation, InvitationCode
 
@@ -54,8 +54,9 @@ class BetaViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_garden_when_not_invited(self):
+        """Confirm that an unauthenticated user is redirected to login"""
         response = self.client.get(reverse('invited_only'))
-        self.assertRedirects(response, reverse(self.redirect))
+        self.assertRedirects(response, setting('LOGIN_URL'))
 
     def test_using_invite(self):
         cary = User.objects.create_user('cary', 'cary@example.com', 'secret')

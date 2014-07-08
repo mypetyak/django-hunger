@@ -1,6 +1,4 @@
-from django.core.urlresolvers import reverse_lazy
 from django.shortcuts import redirect
-from hunger.email import beta_invite
 from hunger.models import InvitationCode
 from hunger.forms import InviteSendForm
 from hunger.utils import setting, now
@@ -24,10 +22,8 @@ class InviteView(FormView):
         form.instance.invited = now()
         form.save()
 
-        # Send invitation email to user
-        beta_invite(form.instance.email, valid_code, self.request)
-
         return super(InviteView, self).form_valid(form)
+
 
 class NotBetaView(TemplateView):
     """
@@ -55,16 +51,14 @@ class InvalidView(TemplateView):
 
 class InviteSentView(TemplateView):
     """
-    Display a message to the user after sending out invitations to other people.
+    Display a message to the user after sending out invitations to people.
     """
     template_name = 'hunger/invite_sent.html'
 
 
 @login_required
 def verify_invite(request, code):
-    """
-    Verify new invitee by storing invite code in cookie for middleware to validate.
-    """
+    """Verify new invitee by storing invite code for middleware to validate."""
     response = redirect(setting('HUNGER_VERIFIED_REDIRECT'))
     response.set_cookie('hunger_code', code)
     return response
